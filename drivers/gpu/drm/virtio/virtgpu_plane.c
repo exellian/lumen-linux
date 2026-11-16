@@ -36,6 +36,7 @@
 
 static const uint32_t virtio_gpu_formats[] = {
 	DRM_FORMAT_HOST_XRGB8888,
+	DRM_FORMAT_ABGR8888,
 };
 
 static const uint32_t virtio_gpu_cursor_formats[] = {
@@ -47,6 +48,9 @@ uint32_t virtio_gpu_translate_format(uint32_t drm_fourcc)
 	uint32_t format;
 
 	switch (drm_fourcc) {
+	case DRM_FORMAT_ABGR8888:
+		format = VIRTIO_GPU_FORMAT_R8G8B8A8_UNORM;
+		break;
 	case DRM_FORMAT_XRGB8888:
 		format = VIRTIO_GPU_FORMAT_B8G8R8X8_UNORM;
 		break;
@@ -366,11 +370,14 @@ static int virtio_gpu_plane_prepare_fb(struct drm_plane *plane,
 
 	drm_gem_plane_helper_prepare_fb(plane, new_state);
 
-	if (!bo || (plane->type == DRM_PLANE_TYPE_PRIMARY && !bo->guest_blob))
+	if (!bo || (plane->type == DRM_PLANE_TYPE_PRIMARY &&
+		    !bo->guest_blob && !bo->host3d_blob))
 		return 0;
 
 	obj = new_state->fb->obj[0];
-	if (bo->dumb || drm_gem_is_imported(obj)) {
+	/* HOST3D presentation also needs a reservation fence: userspace must
+	 * not reuse an external image before the host has finished reading it. */
+	if (bo->dumb || bo->host3d_blob || drm_gem_is_imported(obj)) {
 		vgplane_st->fence = virtio_gpu_fence_alloc(vgdev,
 						     vgdev->fence_drv.context,
 						     0);
