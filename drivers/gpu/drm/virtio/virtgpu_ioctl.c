@@ -122,6 +122,9 @@ static int virtio_gpu_getparam_ioctl(struct drm_device *dev, void *data,
 			return -ENOENT;
 		value = vgdev->blob_alignment;
 		break;
+	case 0x4c4d0001: /* Private Lumen HOST3D flush-fence contract, version 1. */
+		value = 1;
+		break;
 	default:
 		return -EINVAL;
 	}
